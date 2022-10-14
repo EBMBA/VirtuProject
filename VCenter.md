@@ -135,19 +135,30 @@ On va ici connecter nos 2 hôtes ESXi à notre Vcenter.
 
 > Sur notre Vcenter, on clique sur : **Administration* > *Single Sign-On* > *Configuration* > *Domaine Active Directory* > *Join Domain**.
 
-> On renseigne notre nom de domaine, notre username et notre mot de passe.
+> On renseigne notre nom de domaine, notre username et notre mot de passe puis on clique sur *Join*.
 
 ![](/images/joinAD.png)
 
+## Création Distributed Switch
+---
 
+> Sur le Vcenter, sur notre Datacenter, dans *Actions* on clique sur *Distributed Switch* puis *Nouveau Distributed Switch*.
 
 ![](/images/distributedSwitch/distributedSwitch1.png)
 
+> On lui choisit un nom puis on valide. Ici *DSwitch*.
+
 ![](/images/distributedSwitch/distributedSwitch2.png)
+
+> On sélectionne ensuite la version de notre switch.
 
 ![](/images/distributedSwitch/distributedSwitch3.png)
 
+> On configure notre switch comme suit :
+
 ![](/images/distributedSwitch/distributedSwitch4.png)
+
+> On vérifie notre configuration puis on valide.
 
 ![](/images/distributedSwitch/distributedSwitch5.png)
 
@@ -155,16 +166,7 @@ On va ici connecter nos 2 hôtes ESXi à notre Vcenter.
 
 
 
-
-
-
-
-
 Ajout source d'authentification (AD)
-
-Menu > Administration > SingleSignOn > Configuration > Domain Active Directory > Join AD
-
-
 
 J'ai créé un OU dans AD et j'ai ajouté les utilisateurs qui ont accès à VCenter
 
