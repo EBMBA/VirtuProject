@@ -34,4 +34,4 @@
 
 > Pour le groupe de port Vmotion, il faut bien penser à cocher le service *vMotion*.
 
-![](/images/image9.png)
+![](/images/image9.png)         
