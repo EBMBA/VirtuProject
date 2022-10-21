@@ -28,7 +28,7 @@
 
 ![](/images/ESXI/image7.png)
 
-> Ensuite, on ajoute une adresse IP statique à chaque groupe de ports dans l'onglet *NIC VMKernel*.
+> Ensuite, on ajoute une adresse IP statique à chaque groupe de ports  dans lesquels notre esxi doit être connecté dans l'onglet *NIC VMKernel*. On rajoute donc une IPv4 dans les réseaux suivant : Stockage et VMotion.  
 
 ![](/images/ESXI/image8.png)
 
