@@ -35,3 +35,9 @@
 > Pour le groupe de port Vmotion, il faut bien penser à cocher le service *vMotion*.
 
 ![](/images/ESXI/image9.png)         
+
+> Nous avons donc pour notre premier ESXI :
+![](/images/ESXI/image10.png)         
+
+
+Ces opérations sont à refaire sur notre deuxième ESXI. 
