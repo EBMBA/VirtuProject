@@ -79,6 +79,18 @@
 ![](/images/datacenter/datacenter2.png)
 
 
+## Création cluster
+---
+
+> On va ensuite créer notre cluster.
+
+> Pour cela on se rend dans notre datacenter et on clique sur *Actions* puis sur *Nouveau cluster*.
+
+![](/images/cluster/cluster1.png)
+
+> On définit le nom de notre cluster puis on valide.
+
+
 ## Connection des hosts ESXi à Vcenter
 ---
 
@@ -139,6 +151,7 @@ On va ici connecter nos 2 hôtes ESXi à notre Vcenter.
 
 ![](/images/joinAD.png)
 
+
 ## Création Distributed Switch
 ---
 
@@ -163,25 +176,64 @@ On va ici connecter nos 2 hôtes ESXi à notre Vcenter.
 ![](/images/distributedSwitch/distributedSwitch5.png)
 
 
+## Création Distributed Switch groupes de ports
+---
+
+> On va ensuite créer nos DSwitch groupes de ports Prod Vmotion Stockage.
+
+![](/images/distributedSwitch/dswitch_port1.png)
+
+> On ajoute ensuite les hôtes sur les DSwitch.
+
+> Pour cela on se rend sur Dswitch > Ajouter et gérer les hôtes.
+
+![](/images/distributedSwitch/dswitch_port2.png)
+
+> On séléctionne ensuite les hôtes à ajouter.
+
+![](/images/distributedSwitch/dswitch_port3.png)
+
+> Ensuite, pour chaque interface on ajoute une liaison montante en faisant correspondre les numero d'uplink avec les liaison équivalentes entre les deux hotes.
+
+![](/images/distributedSwitch/dswitch_port4.png)
+![](/images/distributedSwitch/dswitch_port5.png)
+
+> On attribue chaque VMKernel à un groupe de port sauf pour le vSwitch0.
+
+![](/images/distributedSwitch/dswitch_port6.png)
+
+> Ensuite on migre la mise en réseau des VMs.
 
 
+## Connexion ESXi à iSCSI.
 
-Ajout source d'authentification (AD)
+> On va maintenant connecter nos hôtes ESXi à notre iscsi.
 
-J'ai créé un OU dans AD et j'ai ajouté les utilisateurs qui ont accès à VCenter
+> Pour cela, sur vsphere : 
+> * Sur la page d'accueil, cliquez sur l'onglet Configuration.
+> * Cliquez sur Adaptateurs de stockage > Ajouter.
+> * Cliquez sur OK pour ajouter l'adaptateur iSCSI logiciel.
+> * Confirmez en cliquant sur OK.
+> * Après l'actualisation, le nouvel adaptateur iSCSI est répertorié.
 
-Connecter TruNAS à VCenter
+### on va ensuite configurer notre iSCSI.
 
-J'ai créé un compte dans AD pour TruNAS
+> * Cliquez sur Propriétés.
+> * Dans la fenêtre Propriétés, cliquez sur Configurer et définissez le Nom sur l'IQN du serveur.
+> * Cliquez sur l'onglet Dynamic discovery puis sur Ajouter.
+> * Sélectionnez Ne pas utiliser CHAP dans la section CHAP mutuel, puis cliquez sur OK.
+> * Vous voyez maintenant le périphérique dans la fenêtre de découverte dynamique et cliquez sur Fermer.
+> * Confirmez la nouvelle analyse des périphériques de stockage.
+> * Vous voyez maintenant le périphérique devenir gris et "démonté".
 
-J'ai ajouté le compte dans VCenter
+![](/images/iscsi/iscsi1.png)
 
-J'ai ajouté le compte dans TruNAS
+### On va ensuite ajouter un disque pour notre iSCSI.
 
-Ensuite j'ai ajouté le compte dans le groupe des administrateurs de VCenter
+> Pour cela, cliquez sur le menu Data store situé dans la colonne de gauche, puis cliquez sur add storage et sélectionnez Disc/LUN.
 
-J'ai ajouté le compte dans le groupe des administrateurs de TruNAS
+![](/images/iscsi/iscsi2.png)
 
+> Une fois réalisé, on peut voir notre iSCSI qui est donc notre TrueNas dans la liste des datastores.
 
-
-AD ajouter 2 reverse lookup zone (pour chaque réseau).
+![](/images/iscsi/iscsi3.png)
