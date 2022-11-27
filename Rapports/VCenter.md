@@ -209,7 +209,7 @@ On va ici connecter nos 2 hôtes ESXi à notre Vcenter.
 
 > On va maintenant connecter nos hôtes ESXi à notre iscsi.
 
-> Pour cela, sur vsphere : 
+> Pour cela, sur notre console web : 
 > * Sur la page d'accueil, cliquez sur l'onglet Configuration.
 > * Cliquez sur Adaptateurs de stockage > Ajouter.
 > * Cliquez sur OK pour ajouter l'adaptateur iSCSI logiciel.
