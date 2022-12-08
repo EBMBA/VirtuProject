@@ -2,7 +2,6 @@
 ### METRAL EMILE - HARBUTOGLU MUSTAFA - CROZIER CYRIAN - CARTELIER ALEXIS
 ***
 
-
 # VirtuProject
 
 ## Configuration réseau
@@ -96,140 +95,138 @@ Ces opérations sont à refaire sur notre deuxième ESXI.
 <br/>
 
 
-# HA & Fault Tolerance :
+# Création contrôleur de domaine
 
-## Introduction   
+> Nous avons créer notre contrôleur de domaine en suivant le tuto suivant : https://www.informatiweb-pro.net/admin-systeme/win-server/ws-2012-nat-et-routage-reseau.html
 
-**High Availability:**   
-La haute disponibilité permet d'assurer et de garantir le bon fonctionnement des services ou applications et ce 7j/7 et 24h/24.
-La disponibilité est aujourd'hui un enjeu important pour les infrastructures informatiques. 
-Deux moyens complémentaires sont utilisés pour améliorer la disponibilité :   
-- la mise en place d'une infrastructure matérielle spécialisée, généralement en se basant sur de la redondance matérielle. 
-Est alors créé un cluster de haute-disponibilité; une grappe d'ordinateurs dont le but est d'assurer un service en évitant au maximum les indisponibilités;
-- la mise en place de processus adaptés permettant de réduire les erreurs, et d'accélérer la reprise en cas d'erreur. 
+> Pour cela nous avons défini le nom de la machine à l'aide d'un script Powershell.
 
-**Fault tolerance:**   
-Fault Tolerance est une fonctionnalité qui va permettre de donner de la haute disponibilité voir de la disponibilité quasi total d'une machine virtuelle critique. Conçu pour qu'une machine virtuelle secondaire puisse reprendre immédiatement sans aucune perte de service lorsque survient une panne.      
-Quand Fault Tolerance est activée, vCenter Server réinitialise la limite de mémoire de la VM et définit la réservation de mémoire en fonction de la taille de la mémoire de la VM.   
-Si Fault Tolerance reste activée, il n'est pas possible de modifier la réservation de mémoire, sa taille, la limite, le nombre de vCPU ou les partages.   
-Il est également impossible d'ajouter ou de supprimer des disques pour la machine virtuelle. Quand Fault Tolerance est désactivée, les valeurs d'origine de tous les paramètres qui ont été modifiés ne sont pas restaurées.   
+* Script1_Rename-Computer
 
-# Prérequis:
-L'option permettant d'activer Fault Tolerance n'est pas disponible si l'une de ces conditions s'applique :   
-- La machine virtuelle réside sur un hôte qui n'a pas de licence pour la fonction.   
-- La machine virtuelle réside sur un hôte qui est dans le mode maintenance ou le mode standby.   
-- La machine virtuelle est déconnectée ou orpheline (son fichier .vmx n'est pas accessible).   
-- L'utilisateur n'a pas l'autorisation d'activer la fonction.
+    > Script permettant de forcer le changement de nom du DC.
 
+```powershell
+$NameComputer = "virtu-DC09"
 
-# Procédure   
-1. Dans vSphere Client, accédez à la VM pour laquelle vous souhaitez activer Fault Tolerance   
-2. Cliquez avec le bouton droit sur la machine virtuelle et sélectionnez Fault Tolerance > Activer Fault Tolerance.
-3. Cliquez sur Yes.   
-4. Choisissez une banque de données sur laquelle placer les fichiers de configuration de la machine virtuelle secondaire. Puis cliquez sur Suivant.   
-5. Choisissez un hôte sur lequel placer la machine virtuelle secondaire. Puis cliquez sur Suivant.   
-6. Passez vos sélections en revue et cliquez sur Terminer.
-
+Rename-Computer -NewName $NameComputer -Force
+Restart-Computer
+```
 
 <br/>
 
-# SDRS
+> Nous avons exécuté le script permettant de réaliser la configuration réseau du contrôleur de domaine.
 
-## Introduction   
+* Script2_Change_Ip_Config
+Script permettant de changer la configuration de la carte réseau : 
+    - Gateway
+    - Adresse IP
+    - DNS
 
-**SDRS:**   
- Le DRS de Stockage permet de gérer les ressources regroupées d'un cluster de banques de données. Lorsque le DRS de stockage est activé, il fournit des recommandations au sujet du placement et de la migration des disques de la machine virtuelle pour équilibrer l'espace et les ressources d'E/S entre les banques de données du cluster.
+```powershell
+$IPAddress = "192.168.17.145"
+$Prefix = "29"
+$Gateway = "192.168.17.1"
+$IPAddressDNS = "127.0.0.1"
 
-Lorsqu'on souhaite activer le DRS de stockage, on doit activer les fonctions suivantes:
-- Équilibrage de charge de l'espace entre les banques de données dans un cluster de banque de données.   
-- Équilibrage de charge E/S entre les banques de données dans un cluster de banque de données.   
-- Placement initial des disques virtuels en fonction de l'espace et de la charge de travail E/S.   
-
-
-# Procédure   
-
-1. Accédez au cluster de banques de données dans vSphere Client.   
-2. Cliquez sur l'onglet Configurer, puis sur Services.   
-3. Sélectionnez Storage DRS et cliquez sur Modifier.   
-4. Sélectionnez Activer vSphere DRS et cliquez sur OK.   
-5. (Facultatif) Pour désactiver uniquement les fonctions du DRS de stockage liées aux E/S, en laissant les commandes liées à l'espace actives, suivez les étapes suivantes.   
-- Sous DRS de stockage, sélectionnez Modifier.   
-- Désélectionnez l'option Activer la mesure E/S du DRS de stockage, puis cliquez sur OK.   
-
+New-NetIPAddress -IPAddress $IPAddress -PrefixLength $Prefix -InterfaceIndex (Get-NetAdapter).ifIndex -DefaultGateway $Gateway
+Set-DnsClientServerAddress -InterfaceIndex (Get-NetAdapter).ifIndex -ServerAddresses ($IPAddressDNS)
+```
 
 <br/>
 
+> Nous avons ensuite exécuté le script permettant de réaliser la configuration de l'ADDS et du DNS.
+
+* Script3_Install_ADDS-DNS
+Script permmetant la configuration de l'ADDS et du DNS
+    - Le script configure le nom du DNS  
+    - Puis installe les features nécessaire pour la configuration de l'ADDS.
+    - Et pour finir configuration de la forêt AD
+
+```powershell
+$DomainNameDNS = "virtu-09.tpv.cpe.localdomain"
+$DomainNameNetbios = "VIRTU-09"
+
+$FeatureList = @("RSAT-AD-Tools", "AD-Domain-Services", "DNS")
+
+Foreach($Feature in $FeatureList){
+
+    if(((Get-WindowsFeature -Name $Feature).InstallState)-eq "Available"){
+
+            Write-Output " Feature $Feature will be installed now ! "
+
+                Try{
+
+                        Add-WindowsFeature -Name $Feature -IncludeManagementTools -IncludeAllSubFeature
+
+                        Write-Output  "$Feature : Installation is a success !"
+
+                }Catch{
+
+                        Write-Output "$Feature : Error during installation !"
+                }
+        } 
+} # Foreach($Feature in $FeatureList)
 
 
-# VM Backup
-vCenter Server prend en charge un mécanisme de sauvegarde et de restauration sur fichier qui permet de récupérer un environnement après des défaillances.
+$ForestConfiguration = @{
+'-DatabasePath'= 'C:\Windows\NTDS';
+'-DomainMode' = 'Default';
+'-DomainName' = $DomainNameDNS;
+'-DomainNetbiosName' = $DomainNameNetbios;
+'-ForestMode' = 'Default';
+'-InstallDns' = $true;
+'-LogPath' = 'C:\Windows\NTDS';
+'-NoRebootOnCompletion' = $false;
+'-SysvolPath' = 'C:\Windows\SYSVOL';
+'-Force' = $true;
+'-CreateDnsDelegation' = $false }
 
-## Configuration
-Depuis l'interface de vCenter Server il est possible de créer une sauvegarde sur fichier de l'instance de vCenter Server.   
-Après avoir créé la sauvegarde, il est possible de la restaurer à l'aide du programme d'installation de l'interface utilisateur graphique du dispositif.
-
-Depuis l'interface de vCenter Server il est possible d'effectuer une sauvegarde sur fichier des données de configuration mémoire, d'inventaire et d'historique de l’instance de vCenter Server. Les données sauvegardées sont transférées via FTP, FTPS, HTTP, HTTPS, SFTP, NFS ou SMB vers un système distant. La sauvegarde n'est pas stockée sur le dispositif vCenter Server.
-
-Il est possible d'effectuer une restauration sur fichier uniquement pour un système vCenter Server qui a été sauvegardé précédemment à l'aide de l'interface de vCenter Server.   
-Il est possible d'effectuer une opération de restauration de ce type à l'aide du programme d'installation de l'interface utilisateur graphique de vCenter Server Appliance. Le processus consiste à déployer une nouvelle instance de vCenter Server Appliance et à copier les données issues de la sauvegarde sur fichier vers le nouveau dispositif.
-
-
-<br/>
-
-
-# vSphere DRS 
-## Distributed Ressource Scheduler
-Fonction qui affecte et équilibre la capacité informatique dynamiquement dans
-les collections de ressources matérielles pour les machines virtuelles. Cette
-fonction comporte des possibilités de gestion d'alimentation distribuée (DPM)
-permettant au centre de données de réduire significativement sa
-consommation d'énergie.
-Equilibrage des ressources de manières planifié en :   
-- Determiner les heures
-- fonction des CPU et de la RAM  
-
-DRS va décider en fonction du type de parametrage de migrer entre les différents ESXI. De façon à équilibrer les ressources.
-
-### Configuration
-Cluster, activer la fonctionnalité.   
-vMotion doit être activé et fonctionelle et correctement configurer pour permettre l'équilibrage.
-
-Lors de la création d'un cluster, l'option DRS doit être coché
-Plusieurs option s'affiche : 
-- Niveau d'automatisation (3 niveaux : manuel, partiellement automatisé, tout automatisé)
-- Seuil de migration : considérentation en fonction des priorités (de modéré à élévé)
-
-Posibilité de planifier une configuration: nom de tâche, description, horaire.
-
-
-<br/>
-
-
-# vsphere update manager
-
-## Description
-
-vsphere update manager est un composant (plug-in) de vcenter qui permet de gérer les mises à jour des composants de vcenter.
-
-Update manager permet d'autoriser les administrateurs sécurité à appliquer les normes de sécurité sur les hôtes ESX/ESXi et les machines virtuelles hébergées. Ce plug-in vous permet de créer des lignes de base de sécurité personnalisées qui représent un ensemble de normes de sécurité. Les administrateurs de sécurité peuvent vérifier que les hôtes et les machines virtuelles respectent ces lignes de base pour identifiez et corrigez les machines virtuelles non conformes.
-
-Update Manager vous permet d'effectuer les tâches suivantes :
-
-* Mettez à niveau et corrigez les hôtes ESXi.
-* Installez et mettez à niveau le logiciel tiers sur les hôtes.
-* Mettre à niveau le matériel de machine virtuelle et VMware Tools.
-
-Update Manager fonctionne avec les versions suivantes d'ESXi :
-
-* Pour les opérations de mise à niveau de VMware Tools et du matériel des machines virtuelles, Update Manager fonctionne avec 6.0, ESXi 6.5 et ESXi 6.7.
-* Pour les opérations d'application de correctifs aux hôtes ESXi, Update Manager fonctionne avec ESXi 6.0, ESXi 6.5 et ESXi 6.7.
-* Pour les opérations de mise à niveau des hôtes d'ESXi, Update Manager fonctionne avec ESXi 6.0, ESXi 6.5 et leurs versions de mises à jour respectives.
-
-Update Manager commence par télécharger des informations (métadonnées) sur les correctifs et les extensions. Un ou plusieurs de ces correctifs ou extensions sont agrégés pour former une ligne de base. Vous pouvez ajouter plusieurs lignes de base à un groupe de lignes de base. Vous pouvez ensuite appliquer les lignes de base à un ou plusieurs hôtes ESXi. Vous pouvez également appliquer les lignes de base à des machines virtuelles.
-
+Import-Module ADDSDeployment
+Install-ADDSForest @ForestConfiguration
+```
 
 <br/>
 
+> Nous avons ensuite exécuté le script permettant de réaliser l'installation et la configuration du DHCP.
+
+* Script4_Configure_DHCP
+Script permettant l'installation et la configuration du service DHCP
+    - Premièrement création d'un security group
+    - Configuration des paramètres du DHCP
+
+```powershell
+# Installer le service DHCP :
+Install-WindowsFeature -Name DHCP -IncludeManagementTools
+
+# Créer un security group :
+netsh dhcp add securitygroups 
+Restart-Service dhcpserver 
+
+# Vérification de l'existence du serveur DHCP dans le DC : 
+Get-DhcpServerInDC
+
+$Scopes = @{
+       'Prod' = @{
+           Mask = "255.255.255.0"
+           Network = "10.20.30.0"
+           StartRange = "10.20.30.94"
+           EndRange = "10.20.30.254"
+           Gateway = "10.20.30.255"
+    }
+    AdresseDNS = "192.168.17.145"
+    NameDomain = "virtu-09.tpv.cpe.localdomain"
+}
+
+
+foreach ($item in $Scopes.sites.Keys) {
+    Add-DHCPServerv4Scope -Name $Scopes.sites.$item -StartRange $Scopes.sites.$item.StartRange -EndRange $Scopes.sites.$item.EndRange -SubnetMask $Scopes.sites.$item.Mask -State Active
+    Set-DHCPServerv4OptionValue -ScopeID $Scopes.sites.$item.Network  -DnsDomain $Scopes.NameDomain -DnsServer $Scopes.AdresseDNS -Router $Scopes.sites.$item.Gateway
+    Add-DhcpServerInDC -DnsName $Scopes.NameDomain -IpAddress $Scopes.AdresseDNS
+}
+
+Get-DhcpServerv4Scope
+Restart-service dhcpserver
+```
 
 
 # Installation and configuration of VCenter
@@ -471,3 +468,135 @@ On va ici connecter nos 2 hôtes ESXi à notre Vcenter.
 > Une fois réalisé, on peut voir notre iSCSI qui est donc notre TrueNas dans la liste des datastores.
 
 ![](/images/iscsi/iscsi3.png)
+
+
+# HA & Fault Tolerance :
+
+## Introduction   
+
+**High Availability:**   
+La haute disponibilité permet d'assurer et de garantir le bon fonctionnement des services ou applications et ce 7j/7 et 24h/24.
+La disponibilité est aujourd'hui un enjeu important pour les infrastructures informatiques. 
+Deux moyens complémentaires sont utilisés pour améliorer la disponibilité :   
+- la mise en place d'une infrastructure matérielle spécialisée, généralement en se basant sur de la redondance matérielle. 
+Est alors créé un cluster de haute-disponibilité; une grappe d'ordinateurs dont le but est d'assurer un service en évitant au maximum les indisponibilités;
+- la mise en place de processus adaptés permettant de réduire les erreurs, et d'accélérer la reprise en cas d'erreur. 
+
+**Fault tolerance:**   
+Fault Tolerance est une fonctionnalité qui va permettre de donner de la haute disponibilité voir de la disponibilité quasi total d'une machine virtuelle critique. Conçu pour qu'une machine virtuelle secondaire puisse reprendre immédiatement sans aucune perte de service lorsque survient une panne.      
+Quand Fault Tolerance est activée, vCenter Server réinitialise la limite de mémoire de la VM et définit la réservation de mémoire en fonction de la taille de la mémoire de la VM.   
+Si Fault Tolerance reste activée, il n'est pas possible de modifier la réservation de mémoire, sa taille, la limite, le nombre de vCPU ou les partages.   
+Il est également impossible d'ajouter ou de supprimer des disques pour la machine virtuelle. Quand Fault Tolerance est désactivée, les valeurs d'origine de tous les paramètres qui ont été modifiés ne sont pas restaurées.   
+
+# Prérequis:
+L'option permettant d'activer Fault Tolerance n'est pas disponible si l'une de ces conditions s'applique :   
+- La machine virtuelle réside sur un hôte qui n'a pas de licence pour la fonction.   
+- La machine virtuelle réside sur un hôte qui est dans le mode maintenance ou le mode standby.   
+- La machine virtuelle est déconnectée ou orpheline (son fichier .vmx n'est pas accessible).   
+- L'utilisateur n'a pas l'autorisation d'activer la fonction.
+
+
+# Procédure   
+1. Dans vSphere Client, accédez à la VM pour laquelle vous souhaitez activer Fault Tolerance   
+2. Cliquez avec le bouton droit sur la machine virtuelle et sélectionnez Fault Tolerance > Activer Fault Tolerance.
+3. Cliquez sur Yes.   
+4. Choisissez une banque de données sur laquelle placer les fichiers de configuration de la machine virtuelle secondaire. Puis cliquez sur Suivant.   
+5. Choisissez un hôte sur lequel placer la machine virtuelle secondaire. Puis cliquez sur Suivant.   
+6. Passez vos sélections en revue et cliquez sur Terminer.
+
+
+<br/>
+
+# SDRS
+
+## Introduction   
+
+**SDRS:**   
+ Le DRS de Stockage permet de gérer les ressources regroupées d'un cluster de banques de données. Lorsque le DRS de stockage est activé, il fournit des recommandations au sujet du placement et de la migration des disques de la machine virtuelle pour équilibrer l'espace et les ressources d'E/S entre les banques de données du cluster.
+
+Lorsqu'on souhaite activer le DRS de stockage, on doit activer les fonctions suivantes:
+- Équilibrage de charge de l'espace entre les banques de données dans un cluster de banque de données.   
+- Équilibrage de charge E/S entre les banques de données dans un cluster de banque de données.   
+- Placement initial des disques virtuels en fonction de l'espace et de la charge de travail E/S.   
+
+
+# Procédure   
+
+1. Accédez au cluster de banques de données dans vSphere Client.   
+2. Cliquez sur l'onglet Configurer, puis sur Services.   
+3. Sélectionnez Storage DRS et cliquez sur Modifier.   
+4. Sélectionnez Activer vSphere DRS et cliquez sur OK.   
+5. (Facultatif) Pour désactiver uniquement les fonctions du DRS de stockage liées aux E/S, en laissant les commandes liées à l'espace actives, suivez les étapes suivantes.   
+- Sous DRS de stockage, sélectionnez Modifier.   
+- Désélectionnez l'option Activer la mesure E/S du DRS de stockage, puis cliquez sur OK.   
+
+
+<br/>
+
+
+
+# VM Backup
+vCenter Server prend en charge un mécanisme de sauvegarde et de restauration sur fichier qui permet de récupérer un environnement après des défaillances.
+
+## Configuration
+Depuis l'interface de vCenter Server il est possible de créer une sauvegarde sur fichier de l'instance de vCenter Server.   
+Après avoir créé la sauvegarde, il est possible de la restaurer à l'aide du programme d'installation de l'interface utilisateur graphique du dispositif.
+
+Depuis l'interface de vCenter Server il est possible d'effectuer une sauvegarde sur fichier des données de configuration mémoire, d'inventaire et d'historique de l’instance de vCenter Server. Les données sauvegardées sont transférées via FTP, FTPS, HTTP, HTTPS, SFTP, NFS ou SMB vers un système distant. La sauvegarde n'est pas stockée sur le dispositif vCenter Server.
+
+Il est possible d'effectuer une restauration sur fichier uniquement pour un système vCenter Server qui a été sauvegardé précédemment à l'aide de l'interface de vCenter Server.   
+Il est possible d'effectuer une opération de restauration de ce type à l'aide du programme d'installation de l'interface utilisateur graphique de vCenter Server Appliance. Le processus consiste à déployer une nouvelle instance de vCenter Server Appliance et à copier les données issues de la sauvegarde sur fichier vers le nouveau dispositif.
+
+
+<br/>
+
+
+# vSphere DRS 
+## Distributed Ressource Scheduler
+Fonction qui affecte et équilibre la capacité informatique dynamiquement dans
+les collections de ressources matérielles pour les machines virtuelles. Cette
+fonction comporte des possibilités de gestion d'alimentation distribuée (DPM)
+permettant au centre de données de réduire significativement sa
+consommation d'énergie.
+Equilibrage des ressources de manières planifié en :   
+- Determiner les heures
+- fonction des CPU et de la RAM  
+
+DRS va décider en fonction du type de parametrage de migrer entre les différents ESXI. De façon à équilibrer les ressources.
+
+### Configuration
+Cluster, activer la fonctionnalité.   
+vMotion doit être activé et fonctionelle et correctement configurer pour permettre l'équilibrage.
+
+Lors de la création d'un cluster, l'option DRS doit être coché
+Plusieurs option s'affiche : 
+- Niveau d'automatisation (3 niveaux : manuel, partiellement automatisé, tout automatisé)
+- Seuil de migration : considérentation en fonction des priorités (de modéré à élévé)
+
+Posibilité de planifier une configuration: nom de tâche, description, horaire.
+
+
+<br/>
+
+
+# vsphere update manager
+
+## Description
+
+vsphere update manager est un composant (plug-in) de vcenter qui permet de gérer les mises à jour des composants de vcenter.
+
+Update manager permet d'autoriser les administrateurs sécurité à appliquer les normes de sécurité sur les hôtes ESX/ESXi et les machines virtuelles hébergées. Ce plug-in vous permet de créer des lignes de base de sécurité personnalisées qui représent un ensemble de normes de sécurité. Les administrateurs de sécurité peuvent vérifier que les hôtes et les machines virtuelles respectent ces lignes de base pour identifiez et corrigez les machines virtuelles non conformes.
+
+Update Manager vous permet d'effectuer les tâches suivantes :
+
+* Mettez à niveau et corrigez les hôtes ESXi.
+* Installez et mettez à niveau le logiciel tiers sur les hôtes.
+* Mettre à niveau le matériel de machine virtuelle et VMware Tools.
+
+Update Manager fonctionne avec les versions suivantes d'ESXi :
+
+* Pour les opérations de mise à niveau de VMware Tools et du matériel des machines virtuelles, Update Manager fonctionne avec 6.0, ESXi 6.5 et ESXi 6.7.
+* Pour les opérations d'application de correctifs aux hôtes ESXi, Update Manager fonctionne avec ESXi 6.0, ESXi 6.5 et ESXi 6.7.
+* Pour les opérations de mise à niveau des hôtes d'ESXi, Update Manager fonctionne avec ESXi 6.0, ESXi 6.5 et leurs versions de mises à jour respectives.
+
+Update Manager commence par télécharger des informations (métadonnées) sur les correctifs et les extensions. Un ou plusieurs de ces correctifs ou extensions sont agrégés pour former une ligne de base. Vous pouvez ajouter plusieurs lignes de base à un groupe de lignes de base. Vous pouvez ensuite appliquer les lignes de base à un ou plusieurs hôtes ESXi. Vous pouvez également appliquer les lignes de base à des machines virtuelles.
