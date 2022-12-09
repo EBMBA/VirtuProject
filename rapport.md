@@ -4,6 +4,38 @@
 
 # VirtuProject  - Groupe 9
 
+- [VirtuProject  - Groupe 9](#virtuproject----groupe-9)
+  - [Configuration réseau](#configuration-réseau)
+- [CREATION ESXI :](#creation-esxi-)
+- [Création contrôleur de domaine](#création-contrôleur-de-domaine)
+- [Installation and configuration of VCenter](#installation-and-configuration-of-vcenter)
+  - [Stage 1 : Installation of VCenter](#stage-1--installation-of-vcenter)
+  - [Stage 2 : Configuration of VCenter](#stage-2--configuration-of-vcenter)
+  - [Upgrade Vcenter](#upgrade-vcenter)
+  - [Création datacenter](#création-datacenter)
+  - [Création cluster](#création-cluster)
+  - [Connection des hosts ESXi à Vcenter](#connection-des-hosts-esxi-à-vcenter)
+  - [Join AD](#join-ad)
+  - [Création Distributed Switch](#création-distributed-switch)
+  - [Création Distributed Switch groupes de ports](#création-distributed-switch-groupes-de-ports)
+  - [Connexion ESXi à iSCSI.](#connexion-esxi-à-iscsi)
+    - [on va ensuite configurer notre iSCSI.](#on-va-ensuite-configurer-notre-iscsi)
+- [HA \& Fault Tolerance :](#ha--fault-tolerance-)
+  - [Introduction](#introduction)
+- [Prérequis:](#prérequis)
+- [Procédure](#procédure)
+- [SDRS](#sdrs)
+  - [Introduction](#introduction-1)
+- [Procédure](#procédure-1)
+- [VM Backup](#vm-backup)
+  - [Configuration](#configuration)
+- [vSphere DRS](#vsphere-drs)
+  - [Distributed Ressource Scheduler](#distributed-ressource-scheduler)
+    - [Configuration](#configuration-1)
+- [vsphere update manager](#vsphere-update-manager)
+  - [Description](#description)
+
+
 ## Configuration réseau
 
 |Nom|Réseau||
@@ -260,7 +292,7 @@ Restart-service dhcpserver
 
 ![](/images/Vcenter/vcenter7.png)
 
-> On peut ennuite valider et lancer l'installation.
+> On peut ennsuite valider et lancer l'installation.
 
 ![](/images/Vcenter/vcenter8.png)
 
@@ -280,7 +312,7 @@ Restart-service dhcpserver
 
 ![](/images/Vcenter/vcenter2.3.png)
 
-> On va ensuite créer une entrée DNS pour le VCSA.
+> On va ensuite créer une entrée DNS pour le VCSA. En cochant la création d'un point d'enregistrement PTR associé. (La zone DNS inversé doit avoir été créé avant)
 
 ![](/images/Vcenter/vcenter2.4.png)
 
